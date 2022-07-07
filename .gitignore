@@ -1,16 +1,23 @@
-# Binaries for programs and plugins
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
+.idea/
+.vscode/
 
-# Test binary, built with `go test -c`
-*.test
+bin/
+dist/
 
-# Output of the go coverage tool, specifically when used with LiteIDE
-*.out
+coverage.txt
+itest/coverage.txt
+itest/itest.test
+vendor
 
-# Dependency directories (remove the comment below to include it)
- *vendor*
+# Ignore Mac DS_Store files
+*.DS_Store
+
+site/
+
+## helm chart
+output/*
+.cr-release-packages/*
+## idea files
 *.iml
+## yamllint logfile
+yamllint-*
