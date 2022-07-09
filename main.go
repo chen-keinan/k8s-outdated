@@ -10,6 +10,11 @@ import (
 	"strings"
 )
 
+const (
+	baseURL = "https://raw.githubusercontent.com/kubernetes/kubernetes"
+	fileURL = "api/openapi-spec/swagger.json"
+)
+
 type K8sAPI struct {
 	Kind              string `header:"k8s api"`
 	DeprecatedVersion string `header:"deprecated Version"`
@@ -17,31 +22,27 @@ type K8sAPI struct {
 }
 
 func main() {
-	baseURL := "https://raw.githubusercontent.com/kubernetes/kubernetes"
-	fileURL := "api/openapi-spec/swagger.json"
-	k8sVer := "1.17.7"
-	kVer := getRelevantK8sVersions(k8sVer)
+	k8sVer := os.Args[1:]
+	kVer := getRelevantK8sVersions(k8sVer[0])
+	kVer = append(kVer, "master")
 	mapList := make(map[string]map[string]interface{}, 0)
-	gavMap := make(map[string]k8sObject)
-	mDetials := versionToDetails(kVer, baseURL, fileURL, mapList, gavMap)
+	mDetails := versionToDetails(kVer, mapList)
 	apis := make([]K8sAPI, 0)
-	for key, val := range mDetials {
-		fmt.Println(fmt.Sprintf("Kubernetes Version: %s", key))
-		for _, data := range val {
-			if len(data.Deprecated) == 0 && len(data.Removed) == 0 {
-				continue
-			}
-			if len(data.Gav.Kind) == 0 || len(data.Gav.Version) == 0 || len(data.Gav.Group) == 0 {
-				continue
-			}
-			apis = append(apis, K8sAPI{Kind: fmt.Sprintf("%s.%s.%s", data.Gav.Group, data.Gav.Version, data.Gav.Kind), DeprecatedVersion: data.Deprecated, RemovedVersion: data.Removed})
+	fmt.Println(fmt.Sprintf("Kubernetes Version: %s", k8sVer))
+	for _, data := range mDetails {
+		if len(data.Deprecated) == 0 && len(data.Removed) == 0 {
+			continue
 		}
+		if len(data.Gav.Kind) == 0 || len(data.Gav.Version) == 0 || len(data.Gav.Group) == 0 {
+			continue
+		}
+		apis = append(apis, K8sAPI{Kind: fmt.Sprintf("%s.%s.%s", data.Gav.Group, data.Gav.Version, data.Gav.Kind), DeprecatedVersion: data.Deprecated, RemovedVersion: data.Removed})
 	}
 	tableprinter.Print(os.Stdout, apis)
 }
 
-func versionToDetails(kVer []string, baseURL string, fileURL string, mapList map[string]map[string]interface{}, gavMap map[string]k8sObject) map[string]map[string]k8sObject {
-	mapK8s := make(map[string]map[string]k8sObject)
+func versionToDetails(kVer []string, mapList map[string]map[string]interface{}) map[string]k8sObject {
+	gavMap := make(map[string]k8sObject)
 	for _, kv := range kVer {
 		url := fmt.Sprintf("%s/%s/%s", baseURL, kv, fileURL)
 		res, err := http.Get(url)
@@ -96,14 +97,18 @@ func versionToDetails(kVer []string, baseURL string, fileURL string, mapList map
 				sndes := strings.Split(strings.TrimPrefix(ndes, " "), " ")
 				rem = strings.TrimSuffix(strings.TrimSuffix(sndes[0], ","), ".")
 			}
+			if strings.Contains(lower, "served in") {
+				dIndex := strings.Index(lower, "served in")
+				ndes := lower[dIndex+11:]
+				sndes := strings.Split(strings.TrimPrefix(ndes, " "), " ")
+				rem = strings.TrimSuffix(strings.TrimSuffix(sndes[0], ","), ".")
+			}
+
 			object := k8sObject{Description: desc, Gav: ga[0], Deprecated: dep, Removed: rem}
 			gavMap[key] = object
-
 		}
-		mapK8s[kv] = gavMap
-		break
 	}
-	return mapK8s
+	return gavMap
 }
 
 type k8sObject struct {
