@@ -3,6 +3,7 @@ module k8s-outdated
 go 1.18
 
 require (
+	github.com/MoOx/markdown-to-json v0.0.0-20210505170118-5640643ef9c3 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/kataras/tablewriter v0.0.0-20180708051242-e063d29b7c23 // indirect

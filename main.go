@@ -5,14 +5,16 @@ import (
 	"fmt"
 	"github.com/hashicorp/go-version"
 	"github.com/lensesio/tableprinter"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
 )
 
 const (
-	baseURL = "https://raw.githubusercontent.com/kubernetes/kubernetes"
-	fileURL = "api/openapi-spec/swagger.json"
+	baseURL  = "https://raw.githubusercontent.com/kubernetes/kubernetes"
+	fileURL  = "api/openapi-spec/swagger.json"
+	depGuide = "https://raw.githubusercontent.com/kubernetes/website/main/content/en/docs/reference/using-api/deprecation-guide.md"
 )
 
 type K8sAPI struct {
@@ -22,6 +24,16 @@ type K8sAPI struct {
 }
 
 func main() {
+	res, err := http.Get(depGuide)
+	if err != nil {
+		return
+	}
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return
+	}
+	fmt.Println(string(body))
+	return
 	k8sVer := os.Args[1:]
 	kVer := getRelevantK8sVersions(k8sVer[0])
 	kVer = append(kVer, "master")
