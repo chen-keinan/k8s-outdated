@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"github.com/hashicorp/go-version"
@@ -15,6 +16,11 @@ const (
 	baseURL  = "https://raw.githubusercontent.com/kubernetes/kubernetes"
 	fileURL  = "api/openapi-spec/swagger.json"
 	depGuide = "https://raw.githubusercontent.com/kubernetes/website/main/content/en/docs/reference/using-api/deprecation-guide.md"
+
+	// verbs for detecting removal and deprecation
+	servedIn     = "served in"
+	removedIn    = "removal in"
+	deprecatedIn = "deprecated in"
 )
 
 type K8sAPI struct {
@@ -32,7 +38,7 @@ func main() {
 	if err != nil {
 		return
 	}
-	fmt.Println(string(body))
+	MarkdownToJson(string(body))
 	return
 	k8sVer := os.Args[1:]
 	kVer := getRelevantK8sVersions(k8sVer[0])
@@ -97,30 +103,28 @@ func versionToDetails(kVer []string, mapList map[string]map[string]interface{}) 
 			var dep string
 			var rem string
 			lower := strings.ToLower(desc)
-			if strings.Contains(lower, "deprecated in") {
-				dIndex := strings.Index(lower, "deprecated in")
-				ndes := lower[dIndex+13:]
-				sndes := strings.Split(strings.TrimPrefix(ndes, " "), " ")
-				dep = strings.TrimSuffix(strings.TrimSuffix(sndes[0], ","), ".")
+			if strings.Contains(lower, deprecatedIn) {
+				dep = RemovedDeprecatedIn(lower, deprecatedIn, 13)
 			}
-			if strings.Contains(lower, "removal in") {
-				dIndex := strings.Index(lower, "removal in")
-				ndes := lower[dIndex+11:]
-				sndes := strings.Split(strings.TrimPrefix(ndes, " "), " ")
-				rem = strings.TrimSuffix(strings.TrimSuffix(sndes[0], ","), ".")
+			if strings.Contains(lower, removedIn) {
+				rem = RemovedDeprecatedIn(lower, removedIn, 11)
 			}
-			if strings.Contains(lower, "served in") {
-				dIndex := strings.Index(lower, "served in")
-				ndes := lower[dIndex+11:]
-				sndes := strings.Split(strings.TrimPrefix(ndes, " "), " ")
-				rem = strings.TrimSuffix(strings.TrimSuffix(sndes[0], ","), ".")
+			if strings.Contains(lower, servedIn) {
+				rem = RemovedDeprecatedIn(lower, servedIn, 11)
 			}
-
 			object := k8sObject{Description: desc, Gav: ga[0], Deprecated: dep, Removed: rem}
 			gavMap[key] = object
 		}
 	}
 	return gavMap
+}
+
+func RemovedDeprecatedIn(lower string, verb string, index int) string {
+	dIndex := strings.Index(lower, verb)
+	ndes := lower[dIndex+index:]
+	sndes := strings.Split(strings.TrimPrefix(ndes, " "), " ")
+	rem := strings.TrimSuffix(strings.TrimSuffix(sndes[0], ","), ".")
+	return rem
 }
 
 type k8sObject struct {
@@ -172,4 +176,29 @@ type Ref struct {
 	Ref    string `json:"ref"`
 	NodeId string `json:"node_id"`
 	Url    string `json:"url"`
+}
+
+func MarkdownToJson(markdown string) {
+	scanner := bufio.NewScanner(strings.NewReader(markdown))
+	scanner.Split(bufio.ScanLines)
+	var currentVersion string
+	k8sAPIs := make(map[string][]string, 0)
+	for scanner.Scan() {
+		line := scanner.Text()
+		lineWithoutSpace := strings.TrimSpace(line)
+		if len(lineWithoutSpace) == 0 {
+			continue
+		}
+		if strings.Contains(line, "### v1.") {
+			currentVersion = strings.Replace(lineWithoutSpace, "###", "", -1)
+			if _, ok := k8sAPIs[currentVersion]; !ok {
+				k8sAPIs[currentVersion] = []string{}
+			}
+			continue
+		}
+		if _, ok := k8sAPIs[currentVersion]; ok {
+			k8sAPIs[currentVersion] = append(k8sAPIs[currentVersion], line)
+		}
+	}
+	fmt.Printf(fmt.Sprintf("%v", k8sAPIs))
 }
