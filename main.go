@@ -18,9 +18,10 @@ const (
 	depGuide = "https://raw.githubusercontent.com/kubernetes/website/main/content/en/docs/reference/using-api/deprecation-guide.md"
 
 	// verbs for detecting removal and deprecation
-	servedIn     = "served in"
-	removedIn    = "removal in"
-	deprecatedIn = "deprecated in"
+	servedIn             = "served in"
+	removedIn            = "removal in"
+	deprecatedIn         = "deprecated in"
+	willNoLongerBeServed = "will no longer be served in"
 )
 
 type K8sAPI struct {
@@ -104,13 +105,13 @@ func versionToDetails(kVer []string, mapList map[string]map[string]interface{}) 
 			var rem string
 			lower := strings.ToLower(desc)
 			if strings.Contains(lower, deprecatedIn) {
-				dep = RemovedDeprecatedIn(lower, deprecatedIn, 13)
+				dep = removedDeprecatedVersion(lower, deprecatedIn)
 			}
 			if strings.Contains(lower, removedIn) {
-				rem = RemovedDeprecatedIn(lower, removedIn, 11)
+				rem = removedDeprecatedVersion(lower, removedIn)
 			}
 			if strings.Contains(lower, servedIn) {
-				rem = RemovedDeprecatedIn(lower, servedIn, 11)
+				rem = removedDeprecatedVersion(lower, servedIn)
 			}
 			object := k8sObject{Description: desc, Gav: ga[0], Deprecated: dep, Removed: rem}
 			gavMap[key] = object
@@ -119,9 +120,18 @@ func versionToDetails(kVer []string, mapList map[string]map[string]interface{}) 
 	return gavMap
 }
 
-func RemovedDeprecatedIn(lower string, verb string, index int) string {
+func removedDeprecatedVersion(lower string, verb string) string {
 	dIndex := strings.Index(lower, verb)
-	ndes := lower[dIndex+index:]
+	ndes := lower[dIndex+len(verb):]
+	sndes := strings.Split(strings.TrimPrefix(ndes, " "), " ")
+	rem := strings.TrimSuffix(strings.TrimSuffix(sndes[0], ","), ".")
+	return rem
+}
+
+func findResource(lower string, verbStart string, verbEnd string, index int) string {
+	startIndex := strings.Index(lower, verbStart)
+	endIndex := strings.Index(lower, verbEnd)
+	ndes := lower[startIndex+index:]
 	sndes := strings.Split(strings.TrimPrefix(ndes, " "), " ")
 	rem := strings.TrimSuffix(strings.TrimSuffix(sndes[0], ","), ".")
 	return rem
@@ -197,8 +207,20 @@ func MarkdownToJson(markdown string) {
 			continue
 		}
 		if _, ok := k8sAPIs[currentVersion]; ok {
-			k8sAPIs[currentVersion] = append(k8sAPIs[currentVersion], line)
+			if strings.Contains(line, willNoLongerBeServed) {
+				partLine := findVersion(line, []string{willNoLongerBeServed})
+				k8sAPIs[currentVersion] = append(k8sAPIs[currentVersion], partLine)
+			}
 		}
 	}
-	fmt.Printf(fmt.Sprintf("%v", k8sAPIs))
+	//fmt.Printf(fmt.Sprintf("%v", k8sAPIs))
+}
+
+func findVersion(line string, keyWords []string) string {
+	var partLine string
+	for _, keyWord := range keyWords {
+		partLine = removedDeprecatedVersion(strings.ToLower(line), keyWord, len(keyWord))
+		fmt.Println(partLine)
+	}
+	return partLine
 }
