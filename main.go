@@ -22,10 +22,15 @@ const (
 	removedIn            = "removal in"
 	deprecatedIn         = "deprecated in"
 	willNoLongerBeServed = "will no longer be served in"
+	isNoLongerServedAsOf = "is no longer served as of"
+	apiVersionOf         = "API version of"
+	apiVersionsOf        = "API versions of"
+	apiVersions          = "API version"
+	the                  = "The"
 )
 
 type K8sAPI struct {
-	Kind              string `header:"k8s api"`
+	API               string `header:"k8s api"`
 	DeprecatedVersion string `header:"deprecated Version"`
 	RemovedVersion    string `header:"removed Version"`
 }
@@ -39,13 +44,20 @@ func main() {
 	if err != nil {
 		return
 	}
-	MarkdownToJson(string(body))
-	return
+	objs := MarkdownToJson(string(body))
 	k8sVer := os.Args[1:]
 	kVer := getRelevantK8sVersions(k8sVer[0])
 	kVer = append(kVer, "master")
 	mapList := make(map[string]map[string]interface{}, 0)
 	mDetails := versionToDetails(kVer, mapList)
+	for _, obj := range objs {
+		definition := fmt.Sprintf("%s.%s.%s", obj.Gav.Group, obj.Gav.Version, obj.Gav.Kind)
+		if val, ok := mDetails[definition]; ok {
+			val.Removed = obj.Removed
+			continue
+		}
+		mDetails[definition] = obj
+	}
 	apis := make([]K8sAPI, 0)
 	fmt.Println(fmt.Sprintf("Kubernetes Version: %s", k8sVer))
 	for _, data := range mDetails {
@@ -55,7 +67,7 @@ func main() {
 		if len(data.Gav.Kind) == 0 || len(data.Gav.Version) == 0 || len(data.Gav.Group) == 0 {
 			continue
 		}
-		apis = append(apis, K8sAPI{Kind: fmt.Sprintf("%s.%s.%s", data.Gav.Group, data.Gav.Version, data.Gav.Kind), DeprecatedVersion: data.Deprecated, RemovedVersion: data.Removed})
+		apis = append(apis, K8sAPI{API: fmt.Sprintf("%s.%s.%s", data.Gav.Group, data.Gav.Version, data.Gav.Kind), DeprecatedVersion: data.Deprecated, RemovedVersion: data.Removed})
 	}
 	tableprinter.Print(os.Stdout, apis)
 }
@@ -128,15 +140,6 @@ func removedDeprecatedVersion(lower string, verb string) string {
 	return rem
 }
 
-func findResource(lower string, verbStart string, verbEnd string, index int) string {
-	startIndex := strings.Index(lower, verbStart)
-	endIndex := strings.Index(lower, verbEnd)
-	ndes := lower[startIndex+index:]
-	sndes := strings.Split(strings.TrimPrefix(ndes, " "), " ")
-	rem := strings.TrimSuffix(strings.TrimSuffix(sndes[0], ","), ".")
-	return rem
-}
-
 type k8sObject struct {
 	Description string
 	Deprecated  string
@@ -188,7 +191,8 @@ type Ref struct {
 	Url    string `json:"url"`
 }
 
-func MarkdownToJson(markdown string) {
+func MarkdownToJson(markdown string) []k8sObject {
+	k8sObjects := make([]k8sObject, 0)
 	scanner := bufio.NewScanner(strings.NewReader(markdown))
 	scanner.Split(bufio.ScanLines)
 	var currentVersion string
@@ -207,20 +211,80 @@ func MarkdownToJson(markdown string) {
 			continue
 		}
 		if _, ok := k8sAPIs[currentVersion]; ok {
-			if strings.Contains(line, willNoLongerBeServed) {
-				partLine := findVersion(line, []string{willNoLongerBeServed})
-				k8sAPIs[currentVersion] = append(k8sAPIs[currentVersion], partLine)
+			if strings.Contains(line, "VolumeAttachment") {
+				fmt.Println("here")
+			}
+			if strings.Contains(line, willNoLongerBeServed) || strings.Contains(line, isNoLongerServedAsOf) {
+				removedVersion := findVersion(line, []string{willNoLongerBeServed, isNoLongerServedAsOf})
+				if len(removedVersion) == 0 {
+					continue
+				}
+				apis := findResourcesAPI([]string{the}, []string{apiVersionOf, apiVersionsOf, apiVersions}, line, []string{"**"})
+				resources := findResourcesAPI([]string{apiVersionOf, apiVersionsOf}, []string{willNoLongerBeServed, isNoLongerServedAsOf}, line, []string{",", "and"})
+				for _, api := range apis {
+					apiParts := strings.Split(api, "/")
+					if len(apiParts) == 2 {
+						for _, res := range resources {
+							k8sObjects = append(k8sObjects, k8sObject{Description: line, Removed: removedVersion, Gav: Gav{Group: apiParts[0], Version: apiParts[1], Kind: res}})
+						}
+					}
+				}
+				k8sAPIs[removedVersion] = append(k8sAPIs[removedVersion], line)
 			}
 		}
 	}
-	//fmt.Printf(fmt.Sprintf("%v", k8sAPIs))
+	return k8sObjects
 }
 
 func findVersion(line string, keyWords []string) string {
 	var partLine string
 	for _, keyWord := range keyWords {
-		partLine = removedDeprecatedVersion(strings.ToLower(line), keyWord, len(keyWord))
-		fmt.Println(partLine)
+		partLine = removedDeprecatedVersion(strings.ToLower(line), keyWord)
+		if strings.HasPrefix(partLine, "v1.") {
+			return partLine
+		}
 	}
-	return partLine
+	return ""
+}
+
+func findResourcesAPI(beginWords []string, endWords []string, line string, removedSigns []string) []string {
+	resources := make([]string, 0)
+	var beginWord string
+	var beginIndex, endIndex int
+	for _, b := range beginWords {
+		beginIndex = strings.Index(line, b)
+		if beginIndex == -1 {
+			continue
+		} else {
+			beginWord = b
+			break
+		}
+	}
+	for _, e := range endWords {
+		endIndex = strings.Index(line, e)
+		if endIndex == -1 {
+			continue
+		} else {
+			break
+		}
+	}
+	if beginIndex == -1 {
+		beginIndex = 0
+	}
+	resourceLine := line[beginIndex+len(beginWord) : endIndex]
+	splitResource := strings.Split(resourceLine, " ")
+	for _, r := range splitResource {
+		if len(strings.TrimSpace(r)) == 0 {
+			continue
+		}
+		for _, sign := range removedSigns {
+			resourceLine = strings.Replace(r, sign, " ", -1)
+		}
+		resWithoutSpace := strings.TrimSpace(resourceLine)
+		if len(resWithoutSpace) == 0 {
+			continue
+		}
+		resources = append(resources, strings.TrimSpace(resWithoutSpace))
+	}
+	return resources
 }
