@@ -15,7 +15,7 @@ func main() {
 		os.Exit(1)
 	}
 	// parse deprecate and removed versions from k8s swagger api
-	_, err := swagger.NewVersionCollector().ParseSwagger(os.Args[1:][0])
+	mDetails, err := swagger.NewVersionCollector().ParseSwagger(os.Args[1:][0])
 	if err != nil {
 		fmt.Println("failed to Parse swagger")
 		os.Exit(1)
@@ -27,7 +27,7 @@ func main() {
 		os.Exit(1)
 	}
 	// merge swagger and markdown results
-	apis := collector.MergeMdSwaggerVersions(objs, map[string]collector.K8sObject{})
+	apis := collector.MergeMdSwaggerVersions(objs, mDetails)
 	// print result in a table
 	tableprinter.Print(os.Stdout, apis)
 }

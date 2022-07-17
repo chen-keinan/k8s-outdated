@@ -34,7 +34,7 @@ func NewVersionCollector() *VersionCollector {
 	return &VersionCollector{}
 }
 
-func (vc VersionCollector) ParseSwagger(k8sVer string) (map[string]collector.K8sObject, error) {
+func (vc VersionCollector) ParseSwagger(k8sVer string) (map[string]*collector.K8sObject, error) {
 	r, err := http.Get(k8sTagsUrl)
 	if err != nil {
 		return nil, err
@@ -86,8 +86,8 @@ func (vc VersionCollector) fetchSwaggerVersions(versions []string) ([]map[string
 	return swaggerVersionsData, nil
 }
 
-func (vc VersionCollector) versionToDetails(swaggerData []map[string]interface{}) map[string]collector.K8sObject {
-	gavMap := make(map[string]collector.K8sObject)
+func (vc VersionCollector) versionToDetails(swaggerData []map[string]interface{}) map[string]*collector.K8sObject {
+	gavMap := make(map[string]*collector.K8sObject)
 	for _, data := range swaggerData {
 		p := data["definitions"]
 		for key, val := range p.(map[string]interface{}) {
@@ -127,7 +127,13 @@ func (vc VersionCollector) versionToDetails(swaggerData []map[string]interface{}
 				rem = utils.RemovedDeprecatedVersion(lower, servedIn)
 			}
 			object := collector.K8sObject{Description: desc, Gav: ga[0], Deprecated: dep, Removed: rem}
-			gavMap[key] = object
+			if len(object.Deprecated) == 0 && len(object.Removed) == 0 {
+				continue
+			}
+			if len(object.Gav.Kind) == 0 || len(object.Gav.Version) == 0 || len(object.Gav.Group) == 0 {
+				continue
+			}
+			gavMap[key] = &object
 		}
 	}
 	return gavMap

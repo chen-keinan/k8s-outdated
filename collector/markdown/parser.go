@@ -29,7 +29,7 @@ func NewRemovedVersion() *RemovedVersion {
 	return &RemovedVersion{}
 }
 
-func (vz RemovedVersion) ParseMarkDown() ([]collector.K8sObject, error) {
+func (vz RemovedVersion) ParseMarkDown() ([]*collector.K8sObject, error) {
 	res, err := http.Get(depGuide)
 	if err != nil {
 		return nil, err
@@ -37,8 +37,8 @@ func (vz RemovedVersion) ParseMarkDown() ([]collector.K8sObject, error) {
 	return vz.markdownToObject(res.Body)
 }
 
-func (vz RemovedVersion) markdownToObject(markdownReader io.Reader) ([]collector.K8sObject, error) {
-	k8sObjects := make([]collector.K8sObject, 0)
+func (vz RemovedVersion) markdownToObject(markdownReader io.Reader) ([]*collector.K8sObject, error) {
+	k8sObjects := make([]*collector.K8sObject, 0)
 	scanner := bufio.NewScanner(markdownReader)
 	scanner.Split(bufio.ScanLines)
 	var currentVersion string
@@ -76,7 +76,7 @@ func (vz RemovedVersion) markdownToObject(markdownReader io.Reader) ([]collector
 					apiParts := strings.Split(api, "/")
 					if len(apiParts) == 2 {
 						for _, res := range resources {
-							k8sObjects = append(k8sObjects, collector.K8sObject{Description: line, Removed: removedVersion, Gav: collector.Gav{Group: apiParts[0], Version: apiParts[1], Kind: res}})
+							k8sObjects = append(k8sObjects, &collector.K8sObject{Description: line, Removed: removedVersion, Gav: collector.Gav{Group: apiParts[0], Version: apiParts[1], Kind: res}})
 						}
 					}
 				}
