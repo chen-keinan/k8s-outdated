@@ -7,7 +7,6 @@ import (
 	"k8s-outdated/collector"
 	"k8s-outdated/utils"
 	"net/http"
-	"os"
 	"strings"
 )
 
@@ -65,7 +64,7 @@ func (vc VersionCollector) ParseSwagger(k8sVer string) (map[string]*collector.K8
 	if err != nil {
 		return nil, err
 	}
-	return vc.versionToDetails(vList), nil
+	return vc.versionToDetails(vList)
 }
 
 func (vc VersionCollector) fetchSwaggerVersions(versions []string) ([]map[string]interface{}, error) {
@@ -86,7 +85,10 @@ func (vc VersionCollector) fetchSwaggerVersions(versions []string) ([]map[string
 	return swaggerVersionsData, nil
 }
 
-func (vc VersionCollector) versionToDetails(swaggerData []map[string]interface{}) map[string]*collector.K8sObject {
+func (vc VersionCollector) versionToDetails(swaggerData []map[string]interface{}) (map[string]*collector.K8sObject, error) {
+	if len(swaggerData) == 0 {
+		return map[string]*collector.K8sObject{}, nil
+	}
 	gavMap := make(map[string]*collector.K8sObject)
 	for _, data := range swaggerData {
 		p := data["definitions"]
@@ -95,8 +97,7 @@ func (vc VersionCollector) versionToDetails(swaggerData []map[string]interface{}
 			gav, ok := mval["x-kubernetes-group-version-kind"].(interface{})
 			b, err := json.Marshal(&gav)
 			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
+				return nil, err
 			}
 			if !ok {
 				continue
@@ -104,8 +105,7 @@ func (vc VersionCollector) versionToDetails(swaggerData []map[string]interface{}
 			var ga []collector.Gav
 			err = json.Unmarshal(b, &ga)
 			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
+				return nil, err
 			}
 			if len(ga) == 0 {
 				continue
@@ -136,5 +136,5 @@ func (vc VersionCollector) versionToDetails(swaggerData []map[string]interface{}
 			gavMap[key] = &object
 		}
 	}
-	return gavMap
+	return gavMap, nil
 }
