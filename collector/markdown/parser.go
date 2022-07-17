@@ -2,6 +2,7 @@ package markdown
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"k8s-outdated/collector"
 	"k8s-outdated/utils"
@@ -16,6 +17,7 @@ const (
 	apiVersionsOf        = "API versions of"
 	apiVersions          = "API version"
 	the                  = "The"
+	in                   = "in"
 
 	depGuide = "https://raw.githubusercontent.com/kubernetes/website/main/content/en/docs/reference/using-api/deprecation-guide.md"
 )
@@ -56,12 +58,20 @@ func (vz RemovedVersion) markdownToObject(markdownReader io.Reader) ([]collector
 		}
 		if _, ok := k8sAPIs[currentVersion]; ok {
 			if strings.Contains(line, willNoLongerBeServed) || strings.Contains(line, isNoLongerServedAsOf) {
+				if strings.HasPrefix(line, "RuntimeClass") {
+					fmt.Println("the")
+				}
 				removedVersion := findVersion(line, []string{willNoLongerBeServed, isNoLongerServedAsOf})
 				if len(removedVersion) == 0 {
 					continue
 				}
 				apis := findResourcesAPI([]string{the}, []string{apiVersionOf, apiVersionsOf, apiVersions}, line, []string{"**"})
-				resources := findResourcesAPI([]string{apiVersionOf, apiVersionsOf}, []string{willNoLongerBeServed, isNoLongerServedAsOf}, line, []string{",", "and"})
+				var resources []string
+				if strings.HasPrefix(line, "the") || strings.HasPrefix(line, the) {
+					resources = findResourcesAPI([]string{apiVersionOf, apiVersionsOf}, []string{willNoLongerBeServed, isNoLongerServedAsOf}, line, []string{",", "and", "the"})
+				} else {
+					resources = findResourcesAPI([]string{}, []string{in}, line, []string{",", "and", "the"})
+				}
 				for _, api := range apis {
 					apiParts := strings.Split(api, "/")
 					if len(apiParts) == 2 {
@@ -91,7 +101,8 @@ func findVersion(line string, keyWords []string) string {
 func findResourcesAPI(beginWords []string, endWords []string, line string, removedSigns []string) []string {
 	resources := make([]string, 0)
 	var beginWord string
-	var beginIndex, endIndex int
+	var beginIndex = -1
+	var endIndex int
 	for _, b := range beginWords {
 		beginIndex = strings.Index(line, b)
 		if beginIndex == -1 {
@@ -119,13 +130,13 @@ func findResourcesAPI(beginWords []string, endWords []string, line string, remov
 			continue
 		}
 		for _, sign := range removedSigns {
-			resourceLine = strings.Replace(r, sign, " ", -1)
+			r = strings.Replace(r, sign, " ", -1)
 		}
-		resWithoutSpace := strings.TrimSpace(resourceLine)
-		if len(resWithoutSpace) == 0 {
+		r := strings.TrimSpace(r)
+		if len(r) == 0 {
 			continue
 		}
-		resources = append(resources, strings.TrimSpace(resWithoutSpace))
+		resources = append(resources, strings.TrimSpace(r))
 	}
 	return resources
 }
