@@ -22,14 +22,14 @@ const (
 	depGuide = "https://raw.githubusercontent.com/kubernetes/website/main/content/en/docs/reference/using-api/deprecation-guide.md"
 )
 
-type RemovedVersion struct {
+type DeprecationGuide struct {
 }
 
-func NewRemovedVersion() *RemovedVersion {
-	return &RemovedVersion{}
+func NewDeprecationGuide() *DeprecationGuide {
+	return &DeprecationGuide{}
 }
 
-func (vz RemovedVersion) ParseMarkDown() ([]*collector.K8sObject, error) {
+func (vz DeprecationGuide) CollectOutdatedAPI() ([]*collector.K8sObject, error) {
 	res, err := http.Get(depGuide)
 	if err != nil {
 		return nil, err
@@ -37,7 +37,7 @@ func (vz RemovedVersion) ParseMarkDown() ([]*collector.K8sObject, error) {
 	return vz.markdownToObject(res.Body)
 }
 
-func (vz RemovedVersion) markdownToObject(markdownReader io.Reader) ([]*collector.K8sObject, error) {
+func (vz DeprecationGuide) markdownToObject(markdownReader io.Reader) ([]*collector.K8sObject, error) {
 	k8sObjects := make([]*collector.K8sObject, 0)
 	scanner := bufio.NewScanner(markdownReader)
 	scanner.Split(bufio.ScanLines)

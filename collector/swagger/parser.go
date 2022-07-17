@@ -26,14 +26,14 @@ type Ref struct {
 	Url    string `json:"url"`
 }
 
-type VersionCollector struct {
+type OpenAPISpec struct {
 }
 
-func NewVersionCollector() *VersionCollector {
-	return &VersionCollector{}
+func NewOpenAPISpec() *OpenAPISpec {
+	return &OpenAPISpec{}
 }
 
-func (vc VersionCollector) ParseSwagger(k8sVer string) (map[string]*collector.K8sObject, error) {
+func (vc OpenAPISpec) CollectOutdatedAPI(k8sVer string) (map[string]*collector.K8sObject, error) {
 	r, err := http.Get(k8sTagsUrl)
 	if err != nil {
 		return nil, err
@@ -67,7 +67,7 @@ func (vc VersionCollector) ParseSwagger(k8sVer string) (map[string]*collector.K8
 	return vc.versionToDetails(vList)
 }
 
-func (vc VersionCollector) fetchSwaggerVersions(versions []string) ([]map[string]interface{}, error) {
+func (vc OpenAPISpec) fetchSwaggerVersions(versions []string) ([]map[string]interface{}, error) {
 	swaggerVersionsData := make([]map[string]interface{}, 0)
 	for _, kv := range versions {
 		url := fmt.Sprintf("%s/%s/%s", baseURL, kv, fileURL)
@@ -85,7 +85,7 @@ func (vc VersionCollector) fetchSwaggerVersions(versions []string) ([]map[string
 	return swaggerVersionsData, nil
 }
 
-func (vc VersionCollector) versionToDetails(swaggerData []map[string]interface{}) (map[string]*collector.K8sObject, error) {
+func (vc OpenAPISpec) versionToDetails(swaggerData []map[string]interface{}) (map[string]*collector.K8sObject, error) {
 	if len(swaggerData) == 0 {
 		return map[string]*collector.K8sObject{}, nil
 	}

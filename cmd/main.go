@@ -15,13 +15,13 @@ func main() {
 		os.Exit(1)
 	}
 	// parse deprecate and removed versions from k8s swagger api
-	mDetails, err := swagger.NewVersionCollector().ParseSwagger(os.Args[1:][0])
+	mDetails, err := swagger.NewOpenAPISpec().CollectOutdatedAPI(os.Args[1:][0])
 	if err != nil {
 		fmt.Println("failed to Parse swagger")
 		os.Exit(1)
 	}
 	// parse removed version from k8s deprecation mark down docs
-	objs, err := markdown.NewRemovedVersion().ParseMarkDown()
+	objs, err := markdown.NewDeprecationGuide().CollectOutdatedAPI()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
