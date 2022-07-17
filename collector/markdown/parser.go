@@ -2,7 +2,7 @@ package markdown
 
 import (
 	"bufio"
-	"io/ioutil"
+	"io"
 	"k8s-outdated/collector"
 	"k8s-outdated/utils"
 	"net/http"
@@ -27,14 +27,17 @@ func NewRemovedVersion() *RemovedVersion {
 	return &RemovedVersion{}
 }
 
-func (vz RemovedVersion) MarkdownToJson() ([]collector.K8sObject, error) {
+func (vz RemovedVersion) ParseMarkDown() ([]collector.K8sObject, error) {
 	res, err := http.Get(depGuide)
 	if err != nil {
 		return nil, err
 	}
-	md, err := ioutil.ReadAll(res.Body)
+	return vz.markdownToObject(res.Body)
+}
+
+func (vz RemovedVersion) markdownToObject(markdownReader io.Reader) ([]collector.K8sObject, error) {
 	k8sObjects := make([]collector.K8sObject, 0)
-	scanner := bufio.NewScanner(strings.NewReader(string(md)))
+	scanner := bufio.NewScanner(markdownReader)
 	scanner.Split(bufio.ScanLines)
 	var currentVersion string
 	k8sAPIs := make(map[string][]string, 0)

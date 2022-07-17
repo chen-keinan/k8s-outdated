@@ -2,6 +2,7 @@ package collector
 
 import (
 	"fmt"
+	"strings"
 )
 
 type K8sObject struct {
@@ -25,7 +26,7 @@ type K8sAPI struct {
 
 func MergeMdSwaggerVersions(objs []K8sObject, mDetails map[string]K8sObject) []K8sAPI {
 	for _, obj := range objs {
-		definition := fmt.Sprintf("%s.%s.%s", obj.Gav.Group, obj.Gav.Version, obj.Gav.Kind)
+		definition := strings.TrimSpace(fmt.Sprintf("%s.%s.%s", obj.Gav.Group, obj.Gav.Version, obj.Gav.Kind))
 		if val, ok := mDetails[definition]; ok {
 			val.Removed = obj.Removed
 			continue

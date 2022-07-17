@@ -11,7 +11,7 @@ import (
 
 func main() {
 	// parse removed version from k8s deprecation mark down docs
-	objs, err := markdown.NewRemovedVersion().MarkdownToJson()
+	objs, err := markdown.NewRemovedVersion().ParseMarkDown()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
