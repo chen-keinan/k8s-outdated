@@ -34,16 +34,15 @@ func NewVersionCollector() *VersionCollector {
 	return &VersionCollector{}
 }
 
-func (vc VersionCollector) getRelevantK8sVersions(k8sVer string) []string {
+func (vc VersionCollector) ParseSwagger(k8sVer string) (map[string]collector.K8sObject, error) {
 	r, err := http.Get(k8sTagsUrl)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		return nil, err
 	}
 	var refs []Ref
 	err = json.NewDecoder(r.Body).Decode(&refs)
 	if err != nil {
-		fmt.Println(err)
+		return nil, err
 	}
 	v1, err := version.NewVersion(k8sVer)
 	kVer := make([]string, 0)
@@ -56,35 +55,41 @@ func (vc VersionCollector) getRelevantK8sVersions(k8sVer string) []string {
 		v := strings.Replace(r.Ref, "refs/tags/", "", -1)
 		v2, err := version.NewVersion(strings.Replace(v, "v", "", -1))
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			return nil, err
 		}
 		if v1.LessThanOrEqual(v2) {
 			kVer = append(kVer, v)
 		}
 	}
-	return kVer
+	vList, err := vc.fetchSwaggerVersions(kVer)
+	if err != nil {
+		return nil, err
+	}
+	return vc.versionToDetails(vList), nil
 }
 
-func (vc VersionCollector) VersionToDetails(k8sVer string) map[string]collector.K8sObject {
-	versions := vc.getRelevantK8sVersions(k8sVer)
-	mapList := make(map[string]map[string]interface{}, 0)
-	gavMap := make(map[string]collector.K8sObject)
+func (vc VersionCollector) fetchSwaggerVersions(versions []string) ([]map[string]interface{}, error) {
+	swaggerVersionsData := make([]map[string]interface{}, 0)
 	for _, kv := range versions {
 		url := fmt.Sprintf("%s/%s/%s", baseURL, kv, fileURL)
 		res, err := http.Get(url)
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			return nil, err
 		}
 		var apiMap map[string]interface{}
 		err = json.NewDecoder(res.Body).Decode(&apiMap)
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			return nil, err
 		}
-		mapList[kv] = apiMap
-		p := apiMap["definitions"]
+		swaggerVersionsData = append(swaggerVersionsData, apiMap)
+	}
+	return swaggerVersionsData, nil
+}
+
+func (vc VersionCollector) versionToDetails(swaggerData []map[string]interface{}) map[string]collector.K8sObject {
+	gavMap := make(map[string]collector.K8sObject)
+	for _, data := range swaggerData {
+		p := data["definitions"]
 		for key, val := range p.(map[string]interface{}) {
 			mval := val.(map[string]interface{})
 			gav, ok := mval["x-kubernetes-group-version-kind"].(interface{})
