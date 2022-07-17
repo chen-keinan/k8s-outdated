@@ -24,7 +24,7 @@ func TestMapResources(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			k8sObj, err := NewRemovedVersion().markdownToObject(strings.NewReader(tt.markDownLine))
+			k8sObj, err := NewDeprecationGuide().markdownToObject(strings.NewReader(tt.markDownLine))
 			assert.NoError(t, err)
 			for index, obj := range k8sObj {
 				assert.Equal(t, obj.Gav.Version, tt.K8sObject[index].Gav.Version)

@@ -28,7 +28,7 @@ func TestMapResources(t *testing.T) {
 			assert.NoError(t, err)
 			err = json.Unmarshal(byt, &versions)
 			assert.NoError(t, err)
-			k8sObjMap, err := NewVersionCollector().versionToDetails([]map[string]interface{}{versions})
+			k8sObjMap, err := NewOpenAPISpec().versionToDetails([]map[string]interface{}{versions})
 			assert.NoError(t, err)
 			for index, api := range tt.values {
 				assert.Equal(t, k8sObjMap[api].Deprecated, tt.ExpectedData[index].Deprecated)
