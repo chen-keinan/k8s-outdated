@@ -26,13 +26,13 @@ const (
 type DeprecationGuide struct {
 }
 
-//CollectOutdatedAPI instansiate new DeprecationGuide
+//NewDeprecationGuide instansiate new DeprecationGuide
 func NewDeprecationGuide() *DeprecationGuide {
 	return &DeprecationGuide{}
 }
 
 //CollectOutdatedAPI collect removed api version from k8s deprecation guide
-func (vz DeprecationGuide) CollectOutdatedAPI() ([]*collector.K8sObject, error) {
+func (vz DeprecationGuide) CollectOutdatedAPI() ([]*collector.OutdatedAPI, error) {
 	res, err := http.Get(depGuide)
 	if err != nil {
 		return nil, err
@@ -40,8 +40,8 @@ func (vz DeprecationGuide) CollectOutdatedAPI() ([]*collector.K8sObject, error) 
 	return vz.markdownToObject(res.Body)
 }
 
-func (vz DeprecationGuide) markdownToObject(markdownReader io.Reader) ([]*collector.K8sObject, error) {
-	k8sObjects := make([]*collector.K8sObject, 0)
+func (vz DeprecationGuide) markdownToObject(markdownReader io.Reader) ([]*collector.OutdatedAPI, error) {
+	k8sObjects := make([]*collector.OutdatedAPI, 0)
 	scanner := bufio.NewScanner(markdownReader)
 	scanner.Split(bufio.ScanLines)
 	var currentVersion string
@@ -65,26 +65,31 @@ func (vz DeprecationGuide) markdownToObject(markdownReader io.Reader) ([]*collec
 				if len(removedVersion) == 0 {
 					continue
 				}
-				groups := findResourcesGroups([]string{theUpper}, []string{apiVersionOf, apiVersionsOf, apiVersions}, line, []string{"**"})
-				var resources []string
-				if strings.HasPrefix(line, theLower) || strings.HasPrefix(line, theUpper) {
-					resources = findResourcesGroups([]string{apiVersionOf, apiVersionsOf}, []string{willNoLongerBeServed, isNoLongerServedAsOf}, line, []string{",", and, theLower})
-				} else {
-					resources = findResourcesGroups([]string{}, []string{in}, line, []string{",", and, theLower})
-				}
-				for _, api := range groups {
-					apiParts := strings.Split(api, "/")
-					if len(apiParts) == 2 {
-						for _, res := range resources {
-							k8sObjects = append(k8sObjects, &collector.K8sObject{Description: line, Removed: removedVersion, Gav: collector.Gav{Group: apiParts[0], Version: apiParts[1], Kind: res}})
-						}
-					}
-				}
+				k8sObjects = vz.createAPIObject(line, k8sObjects, removedVersion)
 				k8sAPIs[removedVersion] = append(k8sAPIs[removedVersion], line)
 			}
 		}
 	}
 	return k8sObjects, nil
+}
+
+func (vz DeprecationGuide) createAPIObject(line string, k8sObjects []*collector.OutdatedAPI, removedVersion string) []*collector.OutdatedAPI {
+	groups := findResourcesGroups([]string{theUpper}, []string{apiVersionOf, apiVersionsOf, apiVersions}, line, []string{"**"})
+	var resources []string
+	if strings.HasPrefix(line, theLower) || strings.HasPrefix(line, theUpper) {
+		resources = findResourcesGroups([]string{apiVersionOf, apiVersionsOf}, []string{willNoLongerBeServed, isNoLongerServedAsOf}, line, []string{",", and, theLower})
+	} else {
+		resources = findResourcesGroups([]string{}, []string{in}, line, []string{",", and, theLower})
+	}
+	for _, api := range groups {
+		apiParts := strings.Split(api, "/")
+		if len(apiParts) == 2 {
+			for _, res := range resources {
+				k8sObjects = append(k8sObjects, &collector.OutdatedAPI{Description: line, Removed: removedVersion, Gav: collector.Gvk{Group: apiParts[0], Version: apiParts[1], Kind: res}})
+			}
+		}
+	}
+	return k8sObjects
 }
 
 func findVersion(line string, keyWords []string) string {
@@ -132,7 +137,7 @@ func findResourcesGroups(beginWords []string, endWords []string, line string, re
 		for _, sign := range removedSigns {
 			r = strings.Replace(r, sign, " ", -1)
 		}
-		r := strings.TrimSpace(r)
+		r = strings.TrimSpace(r)
 		if len(r) == 0 {
 			continue
 		}

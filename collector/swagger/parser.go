@@ -36,7 +36,7 @@ func NewOpenAPISpec() *OpenAPISpec {
 }
 
 //CollectOutdatedAPI collect removed api version from k8s swagger api
-func (vc OpenAPISpec) CollectOutdatedAPI(k8sVer string) (map[string]*collector.K8sObject, error) {
+func (vc OpenAPISpec) CollectOutdatedAPI(k8sVer string) (map[string]*collector.OutdatedAPI, error) {
 	r, err := http.Get(k8sTagsURL)
 	if err != nil {
 		return nil, err
@@ -103,50 +103,65 @@ func buildSwaggerURL(version string) string {
 	return fmt.Sprintf("%s/%s/%s", baseURL, version, fileURL)
 }
 
-func (vc OpenAPISpec) versionToDetails(swaggerData []map[string]interface{}) (map[string]*collector.K8sObject, error) {
+func (vc OpenAPISpec) versionToDetails(swaggerData []map[string]interface{}) (map[string]*collector.OutdatedAPI, error) {
 	if len(swaggerData) == 0 {
-		return map[string]*collector.K8sObject{}, nil
+		return map[string]*collector.OutdatedAPI{}, nil
 	}
-	gavMap := make(map[string]*collector.K8sObject)
+	gavMap := make(map[string]*collector.OutdatedAPI)
 	for _, data := range swaggerData {
-		p := data["definitions"]
-		for key, val := range p.(map[string]interface{}) {
-			mval := val.(map[string]interface{})
-			gav, ok := mval["x-kubernetes-group-version-kind"]
-			if !ok {
-				continue
-			}
-			ga, err := vc.parseSwaggerData(gav)
-			if err != nil {
-				return nil, err
-			}
-			if len(ga) == 0 {
-				continue
-			}
-			desc, ok := mval["description"].(string)
-			if !ok {
-				continue
-			}
-			dep, rem := vc.depRemovedVersion(desc)
-			object := collector.K8sObject{Description: desc, Gav: ga[0], Deprecated: dep, Removed: rem}
-			if len(object.Deprecated) == 0 && len(object.Removed) == 0 {
-				continue
-			}
-			if len(object.Gav.Kind) == 0 || len(object.Gav.Version) == 0 || len(object.Gav.Group) == 0 {
-				continue
-			}
-			gavMap[key] = &object
+		p, ok := data["definitions"]
+		if !ok {
+			return map[string]*collector.OutdatedAPI{}, nil
+		}
+		m, err := vc.findOutDatedAPIVersion(p, gavMap)
+		if err != nil {
+			return m, err
 		}
 	}
 	return gavMap, nil
 }
 
-func (vc OpenAPISpec) parseSwaggerData(gav interface{}) ([]collector.Gav, error) {
+func (vc OpenAPISpec) findOutDatedAPIVersion(p interface{}, gavMap map[string]*collector.OutdatedAPI) (map[string]*collector.OutdatedAPI, error) {
+	for key, val := range p.(map[string]interface{}) {
+		mval, ok := val.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		gav, ok := mval["x-kubernetes-group-version-kind"]
+		if !ok {
+			continue
+		}
+		ga, err := vc.parseSwaggerData(gav)
+		if err != nil {
+			return nil, err
+		}
+		if len(ga) == 0 {
+			continue
+		}
+		desc, ok := mval["description"].(string)
+		if !ok {
+			continue
+		}
+		dep, rem := vc.depRemovedVersion(desc)
+		object := collector.OutdatedAPI{Description: desc, Gav: ga[0], Deprecated: dep, Removed: rem}
+		if vc.isOutdatedAPIDataIncomplete(object) {
+			continue
+		}
+		gavMap[key] = &object
+	}
+	return nil, nil
+}
+
+func (vc OpenAPISpec) isOutdatedAPIDataIncomplete(object collector.OutdatedAPI) bool {
+	return (len(object.Deprecated) == 0 && len(object.Removed) == 0) || len(object.Gav.Kind) == 0 || len(object.Gav.Version) == 0 || len(object.Gav.Group) == 0
+}
+
+func (vc OpenAPISpec) parseSwaggerData(gav interface{}) ([]collector.Gvk, error) {
 	b, err := json.Marshal(&gav)
 	if err != nil {
 		return nil, err
 	}
-	var ga []collector.Gav
+	var ga []collector.Gvk
 	err = json.Unmarshal(b, &ga)
 	if err != nil {
 		return nil, err

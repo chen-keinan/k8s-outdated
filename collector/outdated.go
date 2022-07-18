@@ -5,26 +5,30 @@ import (
 	"strings"
 )
 
-type K8sObject struct {
+//OutdatedAPI object
+type OutdatedAPI struct {
 	Description string
 	Deprecated  string
 	Removed     string
-	Gav         Gav
+	Gav         Gvk
 }
 
-type Gav struct {
+//Gvk group/version/kind object
+type Gvk struct {
 	Group   string `json:"group"`
 	Version string `json:"version"`
 	Kind    string `json:"kind"`
 }
 
+//K8sAPI object
 type K8sAPI struct {
 	API               string `header:"k8s api"`
 	DeprecatedVersion string `header:"deprecated Version"`
 	RemovedVersion    string `header:"removed Version"`
 }
 
-func MergeMdSwaggerVersions(objs []*K8sObject, mDetails map[string]*K8sObject) []K8sAPI {
+//MergeMdSwaggerVersions merge swagger and marjdown collector results
+func MergeMdSwaggerVersions(objs []*OutdatedAPI, mDetails map[string]*OutdatedAPI) []K8sAPI {
 	apis := make([]K8sAPI, 0)
 
 	for _, obj := range objs {

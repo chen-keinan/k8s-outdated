@@ -8,18 +8,18 @@ import (
 func TestMapResources(t *testing.T) {
 	tests := []struct {
 		name       string
-		mdAPI      []*K8sObject
-		swaggerAPI map[string]*K8sObject
+		mdAPI      []*OutdatedAPI
+		swaggerAPI map[string]*OutdatedAPI
 		want       []K8sAPI
 	}{
 		{name: "override removed version",
-			mdAPI:      []*K8sObject{{Removed: "1.25", Gav: Gav{Group: "storage.k8s.io", Version: "v1beta1", Kind: "CSIStorageCapacity"}}},
-			swaggerAPI: map[string]*K8sObject{"io.k8s.api.storage.k8s.io.v1beta1.CSIStorageCapacity": {Removed: "1.23", Deprecated: "1.21", Gav: Gav{Group: "storage.k8s.io", Version: "v1beta1", Kind: "CSIStorageCapacity"}}},
+			mdAPI:      []*OutdatedAPI{{Removed: "1.25", Gav: Gvk{Group: "storage.k8s.io", Version: "v1beta1", Kind: "CSIStorageCapacity"}}},
+			swaggerAPI: map[string]*OutdatedAPI{"io.k8s.api.storage.k8s.io.v1beta1.CSIStorageCapacity": {Removed: "1.23", Deprecated: "1.21", Gav: Gvk{Group: "storage.k8s.io", Version: "v1beta1", Kind: "CSIStorageCapacity"}}},
 			want:       []K8sAPI{{DeprecatedVersion: "1.21", RemovedVersion: "1.25", API: "storage.k8s.io.v1beta1.CSIStorageCapacity"}},
 		},
 		{name: "append api",
-			mdAPI:      []*K8sObject{{Removed: "1.25", Gav: Gav{Group: "flowcontrol.apiserver.k8s.io", Version: "v1beta1", Kind: "FlowSchema"}}},
-			swaggerAPI: map[string]*K8sObject{"io.k8s.api.storage.k8s.io.v1beta1.CSIStorageCapacity": {Removed: "1.23", Deprecated: "1.21", Gav: Gav{Group: "storage.k8s.io", Version: "v1beta1", Kind: "CSIStorageCapacity"}}},
+			mdAPI:      []*OutdatedAPI{{Removed: "1.25", Gav: Gvk{Group: "flowcontrol.apiserver.k8s.io", Version: "v1beta1", Kind: "FlowSchema"}}},
+			swaggerAPI: map[string]*OutdatedAPI{"io.k8s.api.storage.k8s.io.v1beta1.CSIStorageCapacity": {Removed: "1.23", Deprecated: "1.21", Gav: Gvk{Group: "storage.k8s.io", Version: "v1beta1", Kind: "CSIStorageCapacity"}}},
 			want: []K8sAPI{{DeprecatedVersion: "", RemovedVersion: "1.25", API: "flowcontrol.apiserver.k8s.io.v1beta1.FlowSchema"},
 				{DeprecatedVersion: "1.21", RemovedVersion: "1.23", API: "storage.k8s.io.v1beta1.CSIStorageCapacity"}},
 		},
