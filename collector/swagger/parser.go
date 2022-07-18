@@ -19,8 +19,8 @@ const (
 	deprecatedIn = "deprecated in"
 )
 
-//Ref version ref object
-type Ref struct {
+//Reference version ref object
+type Reference struct {
 	Ref    string `json:"ref"`
 	NodeID string `json:"node_id"`
 	URL    string `json:"url"`
@@ -41,7 +41,7 @@ func (vc OpenAPISpec) CollectOutdatedAPI(k8sVer string) (map[string]*collector.O
 	if err != nil {
 		return nil, err
 	}
-	var refs []Ref
+	var refs []Reference
 	err = json.NewDecoder(r.Body).Decode(&refs)
 	if err != nil {
 		return nil, err
@@ -61,7 +61,7 @@ func (vc OpenAPISpec) CollectOutdatedAPI(k8sVer string) (map[string]*collector.O
 	return vc.versionToDetails(vList)
 }
 
-func (vc OpenAPISpec) getMatchingVersions(refs []Ref, err error, v1 *version.Version) ([]string, error) {
+func (vc OpenAPISpec) getMatchingVersions(refs []Reference, err error, v1 *version.Version) ([]string, error) {
 	kVer := make([]string, 0)
 	for _, r := range refs {
 		if strings.Contains(r.Ref, "-rc") ||
