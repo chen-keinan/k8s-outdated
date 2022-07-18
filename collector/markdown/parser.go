@@ -22,13 +22,16 @@ const (
 	depGuide = "https://raw.githubusercontent.com/kubernetes/website/main/content/en/docs/reference/using-api/deprecation-guide.md"
 )
 
+//DeprecationGuide object
 type DeprecationGuide struct {
 }
 
+//CollectOutdatedAPI instansiate new DeprecationGuide
 func NewDeprecationGuide() *DeprecationGuide {
 	return &DeprecationGuide{}
 }
 
+//CollectOutdatedAPI collect removed api version from k8s deprecation guide
 func (vz DeprecationGuide) CollectOutdatedAPI() ([]*collector.K8sObject, error) {
 	res, err := http.Get(depGuide)
 	if err != nil {
