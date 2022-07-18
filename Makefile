@@ -7,7 +7,7 @@ GOTEST=$(GOCMD) test
 
 
 all:
-	$(info  "completed running make file for go-simple-config")
+	$(info  "completed running make file for k8s-outdated")
 fmt:
 	@go fmt ./...
 lint:
