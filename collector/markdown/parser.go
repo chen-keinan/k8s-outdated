@@ -45,7 +45,7 @@ func (vz DeprecationGuide) markdownToObject(markdownReader io.Reader) ([]*collec
 	scanner := bufio.NewScanner(markdownReader)
 	scanner.Split(bufio.ScanLines)
 	var currentVersion string
-	k8sAPIs := make(map[string][]string, 0)
+	k8sAPIs := make(map[string][]string)
 	for scanner.Scan() {
 		line := scanner.Text()
 		lineWithoutSpace := strings.TrimSpace(line)
