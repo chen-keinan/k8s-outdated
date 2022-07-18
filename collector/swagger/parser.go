@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/hashicorp/go-version"
 	"k8s-outdated/collector"
-	"k8s-outdated/utils"
 	"net/http"
 	"strings"
 )
@@ -118,13 +117,13 @@ func (vc OpenAPISpec) versionToDetails(swaggerData []map[string]interface{}) (ma
 			var rem string
 			lower := strings.ToLower(desc)
 			if strings.Contains(lower, deprecatedIn) {
-				dep = utils.RemovedDeprecatedVersion(lower, deprecatedIn)
+				dep = collector.FindRemovedDeprecatedVersion(lower, deprecatedIn)
 			}
 			if strings.Contains(lower, removedIn) {
-				rem = utils.RemovedDeprecatedVersion(lower, removedIn)
+				rem = collector.FindRemovedDeprecatedVersion(lower, removedIn)
 			}
 			if strings.Contains(lower, servedIn) {
-				rem = utils.RemovedDeprecatedVersion(lower, servedIn)
+				rem = collector.FindRemovedDeprecatedVersion(lower, servedIn)
 			}
 			object := collector.K8sObject{Description: desc, Gav: ga[0], Deprecated: dep, Removed: rem}
 			if len(object.Deprecated) == 0 && len(object.Removed) == 0 {

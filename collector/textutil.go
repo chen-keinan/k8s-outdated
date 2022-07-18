@@ -1,8 +1,8 @@
-package utils
+package collector
 
 import "strings"
 
-func RemovedDeprecatedVersion(lower string, verb string) string {
+func FindRemovedDeprecatedVersion(lower string, verb string) string {
 	dIndex := strings.Index(lower, verb)
 	ndes := lower[dIndex+len(verb):]
 	sndes := strings.Split(strings.TrimPrefix(ndes, " "), " ")

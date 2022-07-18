@@ -2,10 +2,8 @@ package markdown
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"k8s-outdated/collector"
-	"k8s-outdated/utils"
 	"net/http"
 	"strings"
 )
@@ -16,8 +14,10 @@ const (
 	apiVersionOf         = "API version of"
 	apiVersionsOf        = "API versions of"
 	apiVersions          = "API version"
-	the                  = "The"
+	theUpper             = "The"
+	theLower             = "the"
 	in                   = "in"
+	and                  = "and"
 
 	depGuide = "https://raw.githubusercontent.com/kubernetes/website/main/content/en/docs/reference/using-api/deprecation-guide.md"
 )
@@ -58,21 +58,18 @@ func (vz DeprecationGuide) markdownToObject(markdownReader io.Reader) ([]*collec
 		}
 		if _, ok := k8sAPIs[currentVersion]; ok {
 			if strings.Contains(line, willNoLongerBeServed) || strings.Contains(line, isNoLongerServedAsOf) {
-				if strings.HasPrefix(line, "RuntimeClass") {
-					fmt.Println("the")
-				}
 				removedVersion := findVersion(line, []string{willNoLongerBeServed, isNoLongerServedAsOf})
 				if len(removedVersion) == 0 {
 					continue
 				}
-				apis := findResourcesAPI([]string{the}, []string{apiVersionOf, apiVersionsOf, apiVersions}, line, []string{"**"})
+				groups := findResourcesGroups([]string{theUpper}, []string{apiVersionOf, apiVersionsOf, apiVersions}, line, []string{"**"})
 				var resources []string
-				if strings.HasPrefix(line, "the") || strings.HasPrefix(line, the) {
-					resources = findResourcesAPI([]string{apiVersionOf, apiVersionsOf}, []string{willNoLongerBeServed, isNoLongerServedAsOf}, line, []string{",", "and", "the"})
+				if strings.HasPrefix(line, theLower) || strings.HasPrefix(line, theUpper) {
+					resources = findResourcesGroups([]string{apiVersionOf, apiVersionsOf}, []string{willNoLongerBeServed, isNoLongerServedAsOf}, line, []string{",", and, theLower})
 				} else {
-					resources = findResourcesAPI([]string{}, []string{in}, line, []string{",", "and", "the"})
+					resources = findResourcesGroups([]string{}, []string{in}, line, []string{",", and, theLower})
 				}
-				for _, api := range apis {
+				for _, api := range groups {
 					apiParts := strings.Split(api, "/")
 					if len(apiParts) == 2 {
 						for _, res := range resources {
@@ -90,7 +87,7 @@ func (vz DeprecationGuide) markdownToObject(markdownReader io.Reader) ([]*collec
 func findVersion(line string, keyWords []string) string {
 	var partLine string
 	for _, keyWord := range keyWords {
-		partLine = utils.RemovedDeprecatedVersion(strings.ToLower(line), keyWord)
+		partLine = collector.FindRemovedDeprecatedVersion(strings.ToLower(line), keyWord)
 		if strings.HasPrefix(partLine, "v1.") {
 			return partLine
 		}
@@ -98,7 +95,7 @@ func findVersion(line string, keyWords []string) string {
 	return ""
 }
 
-func findResourcesAPI(beginWords []string, endWords []string, line string, removedSigns []string) []string {
+func findResourcesGroups(beginWords []string, endWords []string, line string, removedSigns []string) []string {
 	resources := make([]string, 0)
 	var beginWord string
 	var beginIndex = -1
