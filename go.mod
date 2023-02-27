@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/hashicorp/go-version v1.6.0
 	github.com/lensesio/tableprinter v0.0.0-20201125135848-89e81fc956e7
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.2
 )
 
 require (
